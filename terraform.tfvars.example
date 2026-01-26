@@ -1,0 +1,51 @@
+// Base domain from which the cluster domain is a subdomain.
+base_domain = "gym.lan"
+
+// prefix to be added to all node names
+common_prefix = "my"
+
+// Name of the vSphere server. The dev cluster is on "vcsa.vmware.devcluster.openshift.com".
+vsphere_hostname = "ocpgym-vc.techzone.ibm.local"
+
+// User on the vSphere server.
+vsphere_username = "gymuser-k3s8e2p2@techzone.ibm.local"
+
+// Password of the user on the vSphere server.
+vsphere_password = "MDGabhNK"
+
+// Name of the vSphere cluster. The dev cluster is "devel".
+vsphere_cluster = "ocp-gym"
+
+// Name of the vSphere data center. The dev cluster is "dc1".
+vsphere_datacenter = "IBMCloud"
+
+// Name of the vSphere data store to use for the VMs. The dev cluster uses "nvme-ds1".
+vsphere_datastore = "gym-0600020stv-k3s8e2p2-storage"
+
+// Name of the RHCOS VM template to clone to create VMs for the cluster
+template_name = "ocp-gym/gym-0600020stv-k3s8e2p2/linux-rhel-9.4-master"
+
+// Name of the VM Network for your cluster nodes
+vsphere_network = "gym-0600020stv-k3s8e2p2-segment"
+
+vsphere_folder = "ocp-gym/gym-0600020stv-k3s8e2p2"
+
+// Do not include the full path, only the name of the pool
+vsphere_resource_pool = "gym-0600020stv-k3s8e2p2"
+
+k3s_agent_count = 6
+
+#use_private_registry = true
+#private_registry_host = "artifactory.gym.lan"
+#private_registry_port = 8443
+#private_registry_repo = "docker-local"
+#private_registry_user = "admin"
+#private_registry_user_password = "password"
+
+# The username for your Red Hat Subscription Management (RHSM) account.
+# This variable is required.
+rhsm_username = ""
+
+# The password for your RHSM account.
+# This variable is also required.
+rhsm_password = ""

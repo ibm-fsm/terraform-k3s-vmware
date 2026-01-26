@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# This module provides a function to safely restart the K3s service and wait
+# until the node has registered and reached a 'Ready' state.
+
+# FUNCTION: fn_restart_and_wait_for_k3s
+fn_restart_and_wait_for_k3s() {
+    local MAX_WAIT_SECONDS=180
+    local CHECK_INTERVAL_SECONDS=5
+    local START_TIME=$(date +%s)
+    local K3S_SERVICE=""
+    
+    echo "--- Restarting K3s Service ---"
+    
+    # --- 1. Determine the correct K3s service name ---
+    if systemctl is-active k3s &>/dev/null || systemctl is-enabled k3s &>/dev/null; then
+        K3S_SERVICE="k3s"
+        echo "Detected K3s Server service unit: 'k3s'."
+    elif systemctl is-active k3s-agent &>/dev/null || systemctl is-enabled k3s-agent &>/dev/null; then
+        K3S_SERVICE="k3s-agent"
+        echo "Detected K3s Agent service unit: 'k3s-agent'."
+    else
+        echo "Error: Neither 'k3s' nor 'k3s-agent' systemd service found." >&2
+        return 1
+    fi
+
+    # --- 2. Restart the determined K3S_SERVICE ---
+    if systemctl restart "$K3S_SERVICE"; then
+        echo "$K3S_SERVICE service restarted successfully. Starting wait loop."
+    else
+        echo "Error: Failed to restart $K3S_SERVICE service." >&2
+        return 1
+    fi
+
+    # --- 3. Conditional Wait for Node Ready status ---
+    
+    # K3s Agents do not have kubectl configured, so we only perform the check on servers.
+    if [ "$K3S_SERVICE" == "k3s-agent" ]; then
+        echo "Node is an Agent. Skipping 'kubectl get node' wait. Assuming successful restart."
+        return 0
+    fi
+
+    # Determine the node name. In K3s, this is typically the hostname.
+    local NODE_NAME=$(hostname)
+
+    echo "Waiting for node ($NODE_NAME) to become Ready (Max: $MAX_WAIT_SECONDS secs)..."
+
+    # Wait loop that checks the node status
+    while ! kubectl get node "$NODE_NAME" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; do
+        
+        # Check for timeout
+        if [ $(($(date +%s) - $START_TIME)) -ge $MAX_WAIT_SECONDS ]; then
+            echo "Error: K3s node $NODE_NAME failed to reach 'Ready' status within $MAX_WAIT_SECONDS seconds." >&2
+            return 1
+        fi
+        
+        echo "Node $NODE_NAME not ready yet. Retrying in $CHECK_INTERVAL_SECONDS secs..."
+        sleep $CHECK_INTERVAL_SECONDS
+    done
+
+    echo "K3s node $NODE_NAME is fully Ready."
+    return 0
+}
