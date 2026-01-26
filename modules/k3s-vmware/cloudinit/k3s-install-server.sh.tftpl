@@ -185,16 +185,16 @@ for disk in $(lsblk -o NAME,TYPE | grep disk | awk '{print $1}'); do
 done
 
 if [ -n "$processed_disks" ]; then
-  vgcreate vg_aiops $processed_disks
+  vgcreate vg_k3s $processed_disks
 else
   echo "No disks were processed."
 fi
 
-lvcreate -L 119G -n lv_rancher vg_aiops
-mkfs.xfs /dev/vg_aiops/lv_rancher
+lvcreate -L 119G -n lv_rancher vg_k3s
+mkfs.xfs /dev/vg_k3s/lv_rancher
 mkdir -p /var/lib/rancher
-mount /dev/vg_aiops/lv_rancher /var/lib/rancher
-echo "/dev/vg_aiops/lv_rancher /var/lib/rancher xfs defaults,nofail 0 2" | tee -a /etc/fstab
+mount /dev/vg_k3s/lv_rancher /var/lib/rancher
+echo "/dev/vg_k3s/lv_rancher /var/lib/rancher xfs defaults,nofail 0 2" | tee -a /etc/fstab
 
 echo "All specified Logical Volumes created, formatted, mounted, and added to fstab."
 echo "LVM disk setup finished at $(date)"
@@ -221,7 +221,7 @@ fi
 echo "Opening firewall ports"
 firewall-cmd --permanent --add-port=80/tcp # Application HTTP port
 firewall-cmd --permanent --add-port=443/tcp # Application HTTPS port
-firewall-cmd --permanent --add-port=6443/tcp # Control plane server API and mirrored registry
+firewall-cmd --permanent --add-port=6443/tcp # server node API and mirrored registry
 firewall-cmd --permanent --add-port=8472/udp # Virtual network
 firewall-cmd --permanent --add-port=10250/tcp # k3s Kubelet metrics and logs (optional)
 firewall-cmd --permanent --add-port=2379/tcp # k3s etcd client communication
@@ -283,9 +283,8 @@ if [[ "$first_instance" == "$instance_id" ]]; then
       K3S_TOKEN="${k3s_token}" \
       sh -s - server \
       --cluster-init \
-      --tls-san "${k3s_url}"
-      # Optional: Disable default ingress/LB if you plan to install your own (e.g., Nginx/MetalLB)
-      # --disable traefik \
+      --tls-san "${k3s_url}" \
+      --disable traefik
       # --disable servicelb
   else
     echo "Skipping install."
@@ -313,6 +312,9 @@ if [[ "$first_instance" == "$instance_id" ]]; then
     echo 'Waiting for k3s startup'
     sleep 5
   done
+
+  # Install Nginx Ingress Controller
+  fn_install_nginx_ingress
 
   # Loop until all nodes are registered
   while true; do
@@ -347,9 +349,8 @@ else
     K3S_TOKEN="${k3s_token}" \
     sh -s - server \
     --server "https://${k3s_url}:6443" \
-    --tls-san "${k3s_url}"
-    # Optional: Disable default ingress/LB if you plan to install your own (e.g., Nginx/MetalLB)
-    # --disable traefik \
+    --tls-san "${k3s_url}" \
+    --disable traefik
     # --disable servicelb
 
   # Check if SELinux is enforcing

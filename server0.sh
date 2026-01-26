@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -x
-
 # Extract the base_domain from terraform.tfvars
 base_domain=$(grep 'base_domain' terraform.tfvars | cut -d'"' -f2)
 # Extract the common_prefix from terraform.tfvars

@@ -79,7 +79,19 @@ variable "k3s_server_count" {
 
 variable "k3s_agent_count" {
   type    = number
-  default = 6
+  default = 3
+}
+
+variable "cpu_pool" {
+  type        = number
+  description = "The total number of vCPUs to allocate across the entire cluster (Servers + Agents). Used to calculate per-node CPU."
+  default     = 24
+}
+
+variable "mem_pool_gb" {
+  type        = number
+  description = "The total amount of Memory (in GB) to allocate across the entire cluster. Used to calculate per-node RAM."
+  default     = 48
 }
 
 variable "install_k3s" {
@@ -108,7 +120,7 @@ variable "haproxy_ip" {
 variable "k3s_server_ips" {
   type        = list(string)
   default     = ["192.168.252.10", "192.168.252.11", "192.168.252.12"]
-  description = "IP addresses for the k3s server (control plane) nodes."
+  description = "IP addresses for the k3s server nodes."
   validation {
     # The condition checks that the length of the list is exactly
     # equal to the value of the k3s_server_count variable.

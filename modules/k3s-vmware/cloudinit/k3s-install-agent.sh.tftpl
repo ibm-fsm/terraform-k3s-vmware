@@ -127,16 +127,16 @@ for disk in $(lsblk -o NAME,TYPE | grep disk | awk '{print $1}'); do
 done
 
 if [ -n "$processed_disks" ]; then
-  vgcreate vg_aiops $processed_disks
+  vgcreate vg_k3s $processed_disks
 else
   echo "No disks were processed."
 fi
 
-lvcreate -L 119G -n lv_rancher vg_aiops
-mkfs.xfs /dev/vg_aiops/lv_rancher
+lvcreate -L 119G -n lv_rancher vg_k3s
+mkfs.xfs /dev/vg_k3s/lv_rancher
 mkdir -p /var/lib/rancher
-mount /dev/vg_aiops/lv_rancher /var/lib/rancher
-echo "/dev/vg_aiops/lv_rancher /var/lib/rancher xfs defaults,nofail 0 2" | tee -a /etc/fstab
+mount /dev/vg_k3s/lv_rancher /var/lib/rancher
+echo "/dev/vg_k3s/lv_rancher /var/lib/rancher xfs defaults,nofail 0 2" | tee -a /etc/fstab
 
 echo "All specified Logical Volumes created, formatted, mounted, and added to fstab."
 echo "LVM disk setup finished at $(date)"
@@ -219,8 +219,6 @@ curl -sfL https://get.k3s.io | \
   K3S_TOKEN="${k3s_token}" \
   sh -s - agent \
   --node-label "worker=true"
-  # Optional: If you strictly need data on the specific partition:
-  # --data-dir "/var/lib/aiops/storage"
 
 # Check if SELinux is enforcing
 if [ "$(getenforce)" == "Enforcing" ]; then

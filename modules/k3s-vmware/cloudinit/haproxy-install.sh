@@ -53,7 +53,7 @@ fi
 echo "Opening firewall ports"
 firewall-cmd --permanent --add-port=80/tcp # Application HTTP port
 firewall-cmd --permanent --add-port=443/tcp # Application HTTPS port
-firewall-cmd --permanent --add-port=6443/tcp # Control plane server API
+firewall-cmd --permanent --add-port=6443/tcp # server node API
 firewall-cmd --reload
 
 # Re-enable SELinux only if it was originally enforcing

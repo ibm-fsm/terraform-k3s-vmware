@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# This module configures K3s to auto-deploy the Nginx Ingress Controller
+# using the built-in Helm Controller.
+
+# FUNCTION: fn_install_nginx_ingress
+fn_install_nginx_ingress() {
+    local MANIFEST_DIR="/var/lib/rancher/k3s/server/manifests"
+    local NGINX_CONFIG_FILE="$MANIFEST_DIR/nginx-ingress.yaml"
+
+    echo "--- Configuring Nginx Ingress Controller ---"
+
+    # Ensure the directory exists (it should if K3s is installed, but safe to check)
+    mkdir -p "$MANIFEST_DIR"
+
+    # Write the Namespace and HelmChart definition.
+    # K3s will see this file and automatically apply it.
+    cat <<EOF > "$NGINX_CONFIG_FILE"
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress-nginx
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: ingress-nginx
+  # The HelmChart CRD itself must live in kube-system to be picked up by the controller
+  namespace: kube-system
+spec:
+  repo: https://kubernetes.github.io/ingress-nginx
+  chart: ingress-nginx
+  version: 4.10.0 # Pin a version for stability
+  # This tells Helm to install the actual pods into the ingress-nginx namespace
+  targetNamespace: ingress-nginx
+  valuesContent: |-
+    controller:
+      # This creates a Service of type LoadBalancer.
+      # Because you left 'svclb' (ServiceLB) enabled in K3s, 
+      # svclb will automatically bind to the host ports 80/443 for this service.
+      service:
+        type: LoadBalancer
+      
+      # Optional: Config for preserving source IPs, etc.
+      config:
+        use-forwarded-headers: "true" 
+      
+      # Ensure ingress class is set to nginx so it doesn't conflict if Traefik is lingering
+      ingressClassResource:
+        name: nginx
+        enabled: true
+        default: true
+EOF
+
+    if [ "$?" -eq 0 ]; then
+        echo "Nginx Ingress manifest placed in $MANIFEST_DIR."
+        echo "K3s will automatically deploy Nginx into the 'ingress-nginx' namespace shortly."
+        return 0
+    else
+        echo "Error: Failed to write Nginx manifest." >&2
+        return 1
+    fi
+}

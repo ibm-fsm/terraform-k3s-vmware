@@ -37,13 +37,14 @@ locals {
 
   total_nodes = var.k3s_server_count + var.k3s_agent_count
 
-  # these are the minimums for base and extended deployment
-  cpu_pool    = 50
-  mem_pool_gb = 100
+  # get values for total cpu and memory needed for all nodes
+  cpu_pool    = var.cpu_pool
+  mem_pool_gb = var.mem_pool_gb
 
   # calculate cpus and memory needed per node
-  num_cpus = max(16, ceil(local.cpu_pool / local.total_nodes))
-  memory   = max(20480, ceil(local.mem_pool_gb / local.total_nodes) * 1024)
+  # Minimum: 2 vCPU, 4GB RAM (Standard k3s requirement)
+  num_cpus = max(2, ceil(local.cpu_pool / local.total_nodes))
+  memory   = max(4096, ceil(local.mem_pool_gb / local.total_nodes) * 1024)
 }
 
 

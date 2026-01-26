@@ -8,7 +8,7 @@ common_prefix = "my"
 vsphere_hostname = "ocpgym-vc.techzone.ibm.local"
 
 // User on the vSphere server.
-vsphere_username = "gymuser-k3s8e2p2@techzone.ibm.local"
+vsphere_username = "itz-6973c9b50f5dd5d0f7d863c7@vsphere.local"
 
 // Password of the user on the vSphere server.
 vsphere_password = "MDGabhNK"
@@ -20,20 +20,22 @@ vsphere_cluster = "ocp-gym"
 vsphere_datacenter = "IBMCloud"
 
 // Name of the vSphere data store to use for the VMs. The dev cluster uses "nvme-ds1".
-vsphere_datastore = "gym-0600020stv-k3s8e2p2-storage"
+vsphere_datastore = "6973c9b50f5dd5d0f7d863c7-storage"
 
 // Name of the RHCOS VM template to clone to create VMs for the cluster
-template_name = "ocp-gym/gym-0600020stv-k3s8e2p2/linux-rhel-9.4-master"
+template_name = "ocp-gym/reservations/6973c9b50f5dd5d0f7d863c7/linux-rhel-9.4-master"
 
 // Name of the VM Network for your cluster nodes
-vsphere_network = "gym-0600020stv-k3s8e2p2-segment"
+vsphere_network = "6973c9b50f5dd5d0f7d863c7-segment"
 
-vsphere_folder = "ocp-gym/gym-0600020stv-k3s8e2p2"
+vsphere_folder = "ocp-gym/reservations/6973c9b50f5dd5d0f7d863c7"
 
 // Do not include the full path, only the name of the pool
-vsphere_resource_pool = "gym-0600020stv-k3s8e2p2"
+vsphere_resource_pool = "6973c9b50f5dd5d0f7d863c7"
 
-k3s_agent_count = 6
+k3s_agent_count = 3
+cpu_pool = 24
+mem_pool_gb = 48
 
 #use_private_registry = true
 #private_registry_host = "artifactory.gym.lan"
