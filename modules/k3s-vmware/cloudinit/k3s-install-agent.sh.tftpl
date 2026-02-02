@@ -26,6 +26,19 @@ do
 done
 }
 
+# Add kubelet eviction / image-gc settings for all nodes
+k3s_kubelet_eviction_config() {
+mkdir -p /etc/rancher/k3s/config.yaml.d/
+cat << 'EOF' >> /etc/rancher/k3s/config.yaml.d/eviction.yaml
+kubelet-arg:
+  - "eviction-hard=nodefs.available<5%,nodefs.inodesFree<5%,imagefs.available<5%,imagefs.inodesFree<5%"
+  - "eviction-minimum-reclaim=nodefs.available=0Mi,nodefs.inodesFree=0,imagefs.available=0Mi,imagefs.inodesFree=0"
+  - "image-gc-high-threshold=99"
+  - "image-gc-low-threshold=98"
+EOF
+chmod 750 /etc/rancher/k3s/config.yaml.d/eviction.yaml
+}
+
 disable_checksum_offload() {
 # Disable TX checksum offloading for the flannel.1 interface to prevent packet corruption issues
 # in some environments where the underlying network does not support checksum offloading properly.
@@ -138,6 +151,18 @@ mkdir -p /var/lib/rancher
 mount /dev/vg_k3s/lv_rancher /var/lib/rancher
 echo "/dev/vg_k3s/lv_rancher /var/lib/rancher xfs defaults,nofail 0 2" | tee -a /etc/fstab
 
+# Create destination
+mkdir -p /var/lib/rancher/kubelet_data
+# Check if /var/lib/kubelet exists AND is NOT a symlink
+# If true, it's a directory on the small root disk, so we delete it.
+if [ -e "/var/lib/kubelet" ] && [ ! -L "/var/lib/kubelet" ]; then
+  rm -rf /var/lib/kubelet
+fi
+# Create the symlink if it doesn't exist yet
+if [ ! -e "/var/lib/kubelet" ]; then
+  ln -s /var/lib/rancher/kubelet_data /var/lib/kubelet
+fi
+
 echo "All specified Logical Volumes created, formatted, mounted, and added to fstab."
 echo "LVM disk setup finished at $(date)"
 
@@ -204,6 +229,8 @@ echo "Registry configuration created at /etc/rancher/k3s/registries.yaml"
 
 # --- Wait for Load Balancer / Server ---
 wait_lb
+
+k3s_kubelet_eviction_config
 
 # --- 3. Install K3s Agent ---
 # We use the official install script.

@@ -138,6 +138,19 @@ chmod 750 /etc/rancher/k3s/config.yaml.d/audit.yaml
 
 }
 
+# Add kubelet eviction / image-gc settings for all nodes
+k3s_kubelet_eviction_config() {
+mkdir -p /etc/rancher/k3s/config.yaml.d/
+cat << 'EOF' >> /etc/rancher/k3s/config.yaml.d/eviction.yaml
+kubelet-arg:
+  - "eviction-hard=nodefs.available<5%,nodefs.inodesFree<5%,imagefs.available<5%,imagefs.inodesFree<5%"
+  - "eviction-minimum-reclaim=nodefs.available=0Mi,nodefs.inodesFree=0,imagefs.available=0Mi,imagefs.inodesFree=0"
+  - "image-gc-high-threshold=99"
+  - "image-gc-low-threshold=98"
+EOF
+chmod 750 /etc/rancher/k3s/config.yaml.d/eviction.yaml
+}
+
 sleep 5
 
 echo "Starting RHSM registration script (Simple Content Access enabled) at $(date)"
@@ -195,6 +208,18 @@ mkfs.xfs /dev/vg_k3s/lv_rancher
 mkdir -p /var/lib/rancher
 mount /dev/vg_k3s/lv_rancher /var/lib/rancher
 echo "/dev/vg_k3s/lv_rancher /var/lib/rancher xfs defaults,nofail 0 2" | tee -a /etc/fstab
+
+# Create destination
+mkdir -p /var/lib/rancher/kubelet_data
+# Check if /var/lib/kubelet exists AND is NOT a symlink
+# If true, it's a directory on the small root disk, so we delete it.
+if [ -e "/var/lib/kubelet" ] && [ ! -L "/var/lib/kubelet" ]; then
+  rm -rf /var/lib/kubelet
+fi
+# Create the symlink if it doesn't exist yet
+if [ ! -e "/var/lib/kubelet" ]; then
+  ln -s /var/lib/rancher/kubelet_data /var/lib/kubelet
+fi
 
 echo "All specified Logical Volumes created, formatted, mounted, and added to fstab."
 echo "LVM disk setup finished at $(date)"
@@ -277,6 +302,7 @@ if [[ "$first_instance" == "$instance_id" ]]; then
   echo "Happy, happy, joy, joy: Cluster init!"
 
   if [[ "$install_k3s" == "true" ]]; then
+    k3s_kubelet_eviction_config
     echo "Running primary node install..."
     curl -sfL https://get.k3s.io | \
       INSTALL_K3S_VERSION="v1.29.0+k3s1" \
@@ -343,6 +369,9 @@ else
   wait_lb
   sleep 5
   echo "Running secondary node install (joining $first_instance)..."
+  
+  # ensure kubelet eviction config exists before k3s starts
+  k3s_kubelet_eviction_config
 
   curl -sfL https://get.k3s.io | \
     INSTALL_K3S_VERSION="v1.29.0+k3s1" \
