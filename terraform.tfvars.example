@@ -33,6 +33,9 @@ vsphere_folder = "ocp-gym/reservations/6973c9b50f5dd5d0f7d863c7"
 // Do not include the full path, only the name of the pool
 vsphere_resource_pool = "6973c9b50f5dd5d0f7d863c7"
 
+# haproxy_ip = "192.168.252.9"
+# k3s_server_ips = ["192.168.252.10", "192.168.252.11", "192.168.252.12"]
+
 k3s_agent_count = 3
 cpu_pool = 24
 mem_pool_gb = 48
