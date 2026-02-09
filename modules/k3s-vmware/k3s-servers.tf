@@ -10,6 +10,7 @@ locals {
     k3s_url                        = "${var.common_prefix}-haproxy.${var.base_domain}",
     num_nodes                      = var.k3s_agent_count + var.k3s_server_count,
     use_private_registry           = var.use_private_registry ? true : false,
+    enable_openldap                = var.enable_openldap ? true : false,
     private_registry               = local.private_registry,
     private_registry_user          = var.private_registry_user,
     private_registry_user_password = var.private_registry_user_password,

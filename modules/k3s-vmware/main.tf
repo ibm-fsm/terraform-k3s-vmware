@@ -86,7 +86,24 @@ locals {
     vsphere_hostname   = var.vsphere_hostname,
     vsphere_username   = var.vsphere_username,
     vsphere_password   = var.vsphere_password,
-    vsphere_datacenter = var.vsphere_datacenter
+    vsphere_datacenter = var.vsphere_datacenter,
+
+    # TLS Certs (Base64 encoded via Terraform's tls provider outputs)
+    ca_crt_b64    = base64encode(tls_self_signed_cert.ca.cert_pem),
+    ldap_crt_b64  = base64encode(tls_locally_signed_cert.ldap.cert_pem),
+    ldap_key_b64  = base64encode(tls_private_key.ldap.private_key_pem),
+
+    # LDAP Configuration
+    ldap_domain   = "lab.local",
+    ldap_org      = "Lab",
+    ldap_password = "password123",
+    
+    # Helper variable for the LDIF (so we don't have to construct DNs manually in the shell script)
+    # Example: "dc=lab,dc=local"
+    ldap_base_dn  = "dc=lab,dc=local" ,
+    
+    # Generic Group Name
+    admin_group   = "platform-admins"    
   }
   
   # Generate the list for COMMON scripts (Server + Agent)

@@ -100,6 +100,12 @@ variable "install_k3s" {
   description = "Can be either 'true' or 'false'."
 }
 
+variable "enable_openldap" {
+  description = "Deploy OpenLDAP with bootstrap users for RBAC testing"
+  type        = bool
+  default     = true
+}
+
 variable "common_prefix" {
   type    = string
   default = "my"

@@ -342,6 +342,11 @@ if [[ "$first_instance" == "$instance_id" ]]; then
   # Install Nginx Ingress Controller
   fn_install_nginx_ingress
 
+%{ if enable_openldap }
+  # Install OpenLDAP for authentication
+  fn_install_openldap
+%{ endif }
+
   # Loop until all nodes are registered
   while true; do
     node_count=$(kubectl get nodes | tail -n +2 | wc -l)

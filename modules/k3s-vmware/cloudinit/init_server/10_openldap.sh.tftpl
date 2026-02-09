@@ -1,0 +1,193 @@
+#!/bin/bash
+
+# This module configures K3s to auto-deploy OpenLDAP with a custom LDIF bootstrap
+# and pre-generated TLS certificates injected via Terraform.
+
+# FUNCTION: fn_install_openldap
+fn_install_openldap() {
+    local MANIFEST_DIR="/var/lib/rancher/k3s/server/manifests"
+    local LDAP_CONFIG_FILE="$MANIFEST_DIR/openldap.yaml"
+
+    echo "--- Configuring OpenLDAP Deployment ---"
+
+    # Ensure the directory exists
+    mkdir -p "$MANIFEST_DIR"
+
+    # Write the complete OpenLDAP manifest (Secret, ConfigMap, Deployment, Service)
+    cat <<EOF > "$LDAP_CONFIG_FILE"
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openldap
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ldap-certs
+  namespace: openldap
+type: Opaque
+data:
+  ca.crt: ${ca_crt_b64}
+  ldap.crt: ${ldap_crt_b64}
+  ldap.key: ${ldap_key_b64}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ldap-bootstrap-data
+  namespace: openldap
+data:
+  # We mount this ConfigMap to auto-import users on startup
+  users.ldif: |
+    dn: ou=groups,${ldap_base_dn}
+    objectClass: organizationalUnit
+    ou: groups
+
+    dn: ou=users,${ldap_base_dn}
+    objectClass: organizationalUnit
+    ou: users
+
+    dn: cn=${admin_group},ou=groups,${ldap_base_dn}
+    objectClass: groupOfNames
+    cn: ${admin_group}
+    member: uid=adminuser,ou=users,${ldap_base_dn}
+    member: uid=testuser,ou=users,${ldap_base_dn}
+
+    dn: uid=adminuser,ou=users,${ldap_base_dn}
+    objectClass: inetOrgPerson
+    objectClass: posixAccount
+    uid: adminuser
+    cn: Admin
+    sn: User
+    mail: adminuser@${ldap_domain}
+    userPassword: ${ldap_password}
+    uidNumber: 10001
+    gidNumber: 10001
+    homeDirectory: /home/adminuser
+
+    dn: uid=testuser,ou=users,${ldap_base_dn}
+    objectClass: inetOrgPerson
+    objectClass: posixAccount
+    uid: testuser
+    cn: Test
+    sn: User
+    mail: testuser@${ldap_domain}
+    userPassword: ${ldap_password}
+    uidNumber: 10002
+    gidNumber: 10002
+    homeDirectory: /home/testuser
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ldap
+  namespace: openldap
+  labels:
+    app: ldap
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ldap
+  template:
+    metadata:
+      labels:
+        app: ldap
+    spec:
+      initContainers:
+        - name: copy-certs
+          image: osixia/openldap:1.5.0
+          command: ['/bin/sh', '-c', 'cp -L /secrets/* /writable-certs/']
+          volumeMounts:
+            - name: ldap-certs-secret
+              mountPath: /secrets
+            - name: ldap-writable-certs
+              mountPath: /writable-certs
+      containers:
+        - name: ldap
+          image: osixia/openldap:1.5.0
+          args: ["--copy-service"]
+          ports:
+            - containerPort: 389
+              name: ldap
+            - containerPort: 636
+              name: ldaps
+          volumeMounts:
+            - name: ldap-data
+              mountPath: /var/lib/ldap
+            - name: ldap-config
+              mountPath: /etc/ldap/slapd.d
+            - name: ldap-writable-certs
+              mountPath: /container/service/slapd/assets/certs
+            - name: bootstrap-data
+              mountPath: /container/service/slapd/assets/config/bootstrap/ldif/custom
+          env:
+            - name: LDAP_LOG_LEVEL
+              value: "256"
+            - name: LDAP_ORGANISATION
+              value: "${ldap_org}"
+            - name: LDAP_DOMAIN
+              value: "${ldap_domain}"
+            - name: LDAP_ADMIN_PASSWORD
+              value: "${ldap_password}"
+            - name: LDAP_CONFIG_PASSWORD
+              value: "${ldap_password}"
+            - name: LDAP_TLS
+              value: "true"
+            - name: LDAP_TLS_CRT_FILENAME
+              value: "ldap.crt"
+            - name: LDAP_TLS_KEY_FILENAME
+              value: "ldap.key"
+            - name: LDAP_TLS_CA_CRT_FILENAME
+              value: "ca.crt"
+            - name: LDAP_TLS_ENFORCE
+              value: "false"
+            - name: LDAP_TLS_VERIFY_CLIENT
+              value: "try"
+      volumes:
+        - name: ldap-data
+          hostPath: 
+            path: /var/lib/rancher/k3s/storage/ldap/data
+            type: DirectoryOrCreate
+        - name: ldap-config
+          hostPath: 
+            path: /var/lib/rancher/k3s/storage/ldap/config
+            type: DirectoryOrCreate
+        - name: ldap-certs-secret
+          secret:
+            secretName: ldap-certs
+        - name: ldap-writable-certs
+          emptyDir: {}
+        - name: bootstrap-data
+          configMap:
+            name: ldap-bootstrap-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ldap
+  name: ldap-service
+  namespace: openldap
+spec:
+  type: ClusterIP
+  selector:
+    app: ldap
+  ports:
+    - name: ldap
+      port: 389
+      targetPort: 389
+    - name: ldaps
+      port: 636
+      targetPort: 636
+EOF
+
+    if [ "$?" -eq 0 ]; then
+        echo "OpenLDAP manifest placed in $MANIFEST_DIR."
+        echo "K3s will automatically deploy OpenLDAP into the 'openldap' namespace shortly."
+        return 0
+    else
+        echo "Error: Failed to write OpenLDAP manifest." >&2
+        return 1
+    fi
+}
