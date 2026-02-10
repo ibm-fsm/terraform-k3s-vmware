@@ -106,6 +106,12 @@ variable "enable_openldap" {
   default     = true
 }
 
+variable "enable_keycloak" {
+  description = "Deploy Keycloak for identity and access management"
+  type        = bool
+  default     = true
+}
+
 variable "common_prefix" {
   type    = string
   default = "my"

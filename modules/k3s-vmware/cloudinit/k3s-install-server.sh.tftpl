@@ -301,6 +301,14 @@ echo "Registry configuration created at /etc/rancher/k3s/registries.yaml"
 if [[ "$first_instance" == "$instance_id" ]]; then
   echo "Happy, happy, joy, joy: Cluster init!"
 
+  # Install Nginx Ingress Controller
+  fn_install_nginx_ingress
+
+%{ if enable_openldap }
+  # Install OpenLDAP for authentication
+  fn_install_openldap
+%{ endif }
+
   if [[ "$install_k3s" == "true" ]]; then
     k3s_kubelet_eviction_config
     echo "Running primary node install..."
@@ -339,14 +347,6 @@ if [[ "$first_instance" == "$instance_id" ]]; then
     sleep 5
   done
 
-  # Install Nginx Ingress Controller
-  fn_install_nginx_ingress
-
-%{ if enable_openldap }
-  # Install OpenLDAP for authentication
-  fn_install_openldap
-%{ endif }
-
   # Loop until all nodes are registered
   while true; do
     node_count=$(kubectl get nodes | tail -n +2 | wc -l)
@@ -361,6 +361,11 @@ if [[ "$first_instance" == "$instance_id" ]]; then
 
   # additional sleep to make sure all nodes are up
   sleep 10
+
+{% if enable_keycloak %}
+  # Install Keycloak for identity and access management
+  fn_install_keycloak
+{% endif %}
 
 else
   echo ":( Cluster join"

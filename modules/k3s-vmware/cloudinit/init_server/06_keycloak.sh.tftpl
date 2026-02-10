@@ -38,11 +38,6 @@ fn_install_keycloak() {
         return 1
     fi
 
-    # 4. Replace image reference (quay.io -> k3s-quay-alias.io)
-    # This ensures we use the registry alias to avoid potential mirror conflicts
-    echo "Updating image registry reference to use k3s-quay-alias.io..."
-    sed -i 's|quay.io|k3s-quay-alias.io|g' "$TEMP_YAML"
-
     # Apply the Keycloak deployment
     echo "Applying Keycloak resources..."
     if kubectl apply -n "$NAMESPACE" -f "$TEMP_YAML"; then

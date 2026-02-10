@@ -41,6 +41,7 @@ cpu_pool = 24
 mem_pool_gb = 48
 
 enable_openldap = true
+enable_keycloak = true
 
 #use_private_registry = true
 #private_registry_host = "artifactory.gym.lan"

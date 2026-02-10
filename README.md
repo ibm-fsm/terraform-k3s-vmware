@@ -230,13 +230,15 @@ Ensure that the account used has a valid RedHat subscription.
 
 * `rhsm_password`: The password for your RHSM account.
 
-**K3s Configuration**:
-
-These variables control the installation of K3s.
+These variables control the installation of K3s and its addon services.
 
 * `k3s_agent_count`: The number of K3s agent nodes to create in the cluster.
 
 * `install_k3s`: A boolean value to enable or disable the K3s installation.
+
+* `enable_openldap`: A boolean value to enable the deployment of an OpenLDAP server (with bootstrap users) into the cluster. Requires `install_k3s` to be true.
+
+* `enable_keycloak`: A boolean value to enable the deployment of Keycloak for Identity and Access Management. Requires `install_k3s` to be true.
 
 **Private Registry Configuration (Optional)**:
 
@@ -402,6 +404,56 @@ Follow the launch template script output (as `root`):
 tail -f /var/log/cloud-init-output.log
 ```
 This can be run from any node, it will show the verbose output of the launch scripts found in this repo under `cloudinit` for the appropriate node or instance type.
+
+## Usage
+
+### Keycloak Usage
+
+After the installation completes, Keycloak will be available at an ingress URL constructed from your `common_prefix` and `domain` variables.
+
+* **URL**: `https://keycloak.<common_prefix>-haproxy.<domain>`
+  * *Example*: `https://keycloak.my-haproxy.gym.lan`
+* **Default Username**: `admin`
+* **Default Password**: `admin`
+
+> **Note**: These are default development credentials. You should change the admin password immediately after your first login.
+
+### OpenLDAP Usage
+
+If enabled, an OpenLDAP server is deployed to the `openldap` namespace with a bootstrap configuration suitable for testing RBAC and Identity Federation.
+
+* **Internal Service DNS**: `ldap-service.openldap.svc.cluster.local`
+* **Ports**: `389` (StartTLS) and `636` (LDAPS)
+* **Base DN**: `dc=lab,dc=local`
+* **Bind DN**: `cn=admin,dc=lab,dc=local`
+* **Bind Password**: `password123`
+
+#### Default Users & Groups
+The following bootstrap identities are pre-provisioned:
+
+* **Admin User**: `uid=adminuser,ou=users,dc=lab,dc=local`
+    * *Password*: `password123`
+* **Test User**: `uid=testuser,ou=users,dc=lab,dc=local`
+    * *Password*: `password123`
+* **Groups**: `cn=platform-admins,ou=groups,dc=lab,dc=local`
+    * *Members*: `adminuser`, `testuser`
+
+#### Testing Connectivity
+You can verify the LDAP server is running and returning results by executing `ldapsearch` directly inside the pod:
+
+```bash
+# 1. Get the Pod Name
+LDAP_POD=$(kubectl get pod -n openldap -l app=ldap -o jsonpath="{.items[0].metadata.name}")
+
+# 2. Run a Search
+kubectl exec -it -n openldap $LDAP_POD -- ldapsearch \
+  -x \
+  -H ldap://localhost \
+  -b "dc=lab,dc=local" \
+  -D "cn=admin,dc=lab,dc=local" \
+  -w "password123" \
+  "(objectclass=inetOrgPerson)"
+```
 
 ## Destroy
 
