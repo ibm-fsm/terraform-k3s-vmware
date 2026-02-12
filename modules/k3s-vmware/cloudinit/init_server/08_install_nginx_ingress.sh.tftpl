@@ -34,6 +34,7 @@ spec:
   # This tells Helm to install the actual pods into the ingress-nginx namespace
   targetNamespace: ingress-nginx
   valuesContent: |-
+  
     controller:
       # This creates a Service of type LoadBalancer.
       # Because you left 'svclb' (ServiceLB) enabled in K3s, 
@@ -41,6 +42,9 @@ spec:
       service:
         type: LoadBalancer
       
+      extraArgs:
+        enable-ssl-passthrough: "true"      
+        
       # Optional: Config for preserving source IPs, etc.
       config:
         use-forwarded-headers: "true" 
