@@ -36,6 +36,27 @@ spec:
   valuesContent: |-
   
     controller:
+      # Set as DaemonSet
+      # This ensures exactly one pod per eligible node.
+      kind: DaemonSet
+      
+      # Pin to Server Nodes (Control Plane)
+      # This prevents pods from running on Agent nodes where HAProxy isn't looking.
+      nodeSelector:
+        node-role.kubernetes.io/master: "true"
+        # Note: newer K3s versions might use 'control-plane' instead of 'master'
+        # node-role.kubernetes.io/control-plane: "true" 
+        
+      # Allow scheduling on Control Plane (Toleration)
+      # By default, masters often have NoSchedule taints. This overrides that.
+      tolerations:
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+    
       # This creates a Service of type LoadBalancer.
       # Because you left 'svclb' (ServiceLB) enabled in K3s, 
       # svclb will automatically bind to the host ports 80/443 for this service.
